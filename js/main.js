@@ -33,15 +33,16 @@
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
-  if (mobileCta && hero && 'IntersectionObserver' in window) {
-    let heroVisible = true, contactVisible = false;
+  if (mobileCta && 'IntersectionObserver' in window) {
+    let heroVisible = !!hero, contactVisible = false;
     const update = () => mobileCta.classList.toggle('is-visible', !heroVisible && !contactVisible);
-    new IntersectionObserver(([e]) => { heroVisible = e.isIntersecting; update(); }).observe(hero);
+    update();
+    if (hero) new IntersectionObserver(([e]) => { heroVisible = e.isIntersecting; update(); }).observe(hero);
     if (contact) new IntersectionObserver(([e]) => { contactVisible = e.isIntersecting; update(); }).observe(contact);
   }
 
   /* ---------- Animacje wejścia ---------- */
-  const revealEls = $$('.section-head, .offer-card, .apartment-head, .gallery, .apartment-grid, .tile, .building-copy, .building-media, .location-grid > *, .area-card, .why,.info-grid li, .contact-inner');
+  const revealEls = $$('.section-head, .offer-card, .apartment-grid, .gallery-section, .strip-grid, .other-card,.tile, .building-copy, .building-media, .location-grid > *, .area-card, .why,.info-grid li, .contact-inner');
   if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     revealEls.forEach((el) => el.classList.add('reveal'));
     const io = new IntersectionObserver((entries) => {
@@ -123,20 +124,28 @@
       x0 = y0 = null;
     }, { passive: true });
 
-    // Galerie apartamentów
+    // Galerie apartamentów: siatka [data-gallery] jest źródłem listy zdjęć
+    const galleries = {};
     $$('[data-gallery]').forEach((gallery) => {
-      const links = $$('a.gallery-item', gallery);
+      const links = $$('a', gallery);
       const list = links.map((a) => ({
         src: a.getAttribute('href'),
         srcset: a.dataset.srcset || '',
         alt: a.dataset.alt || a.querySelector('img')?.alt || '',
       }));
+      galleries[gallery.dataset.gallery] = list;
       links.forEach((a, i) => {
-        a.addEventListener('click', (e) => {
-          e.preventDefault();
-          // „Wszystkie zdjęcia” otwiera galerię od pierwszego zdjęcia
-          open(list, a.classList.contains('gallery-item--more') ? 0 : i, a);
-        });
+        a.addEventListener('click', (e) => { e.preventDefault(); open(list, i, a); });
+      });
+    });
+
+    // Kafelki u góry strony otwierają galerię od wskazanego zdjęcia
+    $$('[data-gallery-open]').forEach((a) => {
+      a.addEventListener('click', (e) => {
+        const list = galleries[a.dataset.galleryOpen];
+        if (!list) return;
+        e.preventDefault();
+        open(list, Number(a.dataset.index) || 0, a);
       });
     });
 
